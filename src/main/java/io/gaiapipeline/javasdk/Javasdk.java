@@ -6,16 +6,19 @@ import io.gaiapipeline.proto.JobResult;
 import io.gaiapipeline.proto.PluginGrpc;
 import io.grpc.Server;
 import io.grpc.health.v1.HealthCheckResponse;
+import io.grpc.netty.GrpcSslContexts;
 import io.grpc.netty.NettyServerBuilder;
 import io.grpc.protobuf.services.ProtoReflectionService;
 import io.grpc.services.HealthStatusManager;
 import io.grpc.stub.StreamObserver;
-import io.netty.channel.epoll.EpollEventLoopGroup;
-import io.netty.channel.epoll.EpollServerDomainSocketChannel;
-import io.netty.channel.unix.DomainSocketAddress;
+import io.netty.handler.ssl.ClientAuth;
+import io.netty.handler.ssl.SslContextBuilder;
+import io.netty.handler.ssl.SslProvider;
 
 import java.io.File;
+import java.net.InetSocketAddress;
 import java.util.ArrayList;
+import java.util.logging.Logger;
 
 /**
  * Gaia - Javasdk
@@ -24,7 +27,7 @@ import java.util.ArrayList;
  * For help, have a look at our docs: https://docs.gaia-pipeline.io
  *
  */
-public final class Javasdk
+public class Javasdk
 {
     /**
      * Core protocol version.
@@ -36,13 +39,13 @@ public final class Javasdk
      * Protocol version.
      * Do not change unless you know what you do.
      */
-    private static final int PROTOCOL_VERSION = 1;
+    private static final int PROTOCOL_VERSION = 2;
 
     /**
      * Protocol name.
      * Do not change unless you know what to do.
      */
-    private static final String PROTOCOL_NAME = "unix";
+    private static final String PROTOCOL_NAME = "tcp";
 
     /**
      * Protocol type.
@@ -60,6 +63,20 @@ public final class Javasdk
      */
     private static final int FNV_32_INIT = 0x811c9dc5;
     private static final int FNV_32_PRIME = 0x01000193;
+
+    private static final String LISTEN_ADDR = "localhost";
+
+    private final String certChainFilePath;
+    private final String privateKeyFilePath;
+    private final String trustCertCollectionFilePath;
+
+    private static final Logger logger = Logger.getLogger(Javasdk.class.getName());
+
+    public Javasdk() {
+        this.certChainFilePath = System.getenv("GAIA_PLUGIN_CERT");
+        this.privateKeyFilePath = System.getenv("GAIA_PLUGIN_KEY");
+        this.trustCertCollectionFilePath = System.getenv("GAIA_PLUGIN_CA_CERT");
+    }
 
     /**
      * Serve initiates the gRPC Server and listens for incoming traffic.
@@ -96,38 +113,29 @@ public final class Javasdk
             }
         }
 
-        // Create a temp file for the unix socket
-        File tempFile = File.createTempFile("gaia", "plugin");
-
-        // We delete it directly cause we don't need it to be existent.
-        tempFile.delete();
-
         // Create health manager
         HealthStatusManager health = new HealthStatusManager();
         health.setStatus("plugin", HealthCheckResponse.ServingStatus.SERVING);
 
-        // Create socket connection
-        EpollEventLoopGroup group = new EpollEventLoopGroup();
-        final Server server = NettyServerBuilder.forAddress(new DomainSocketAddress(tempFile.getAbsolutePath()))
-                .channelType(EpollServerDomainSocketChannel.class)
-                .workerEventLoopGroup(group)
-                .bossEventLoopGroup(group)
-                .addService(new PluginImpl())
+        // Create socket address
+        InetSocketAddress socketAddr = new InetSocketAddress(LISTEN_ADDR, 0);
+
+        // Build and start server
+        Server server = NettyServerBuilder.forAddress(socketAddr)
                 .addService(health.getHealthService())
                 .addService(ProtoReflectionService.newInstance())
-                .build();
+                .addService(new PluginImpl())
+                .sslContext(getSslContextBuilder().build())
+                .build().start();
 
         // Output the address and service name to stdout.
         // hasicorp go-plugin will use that to establish connection.
         String connectString = CORE_PROTOCOL_VERSION + "|" +
                 PROTOCOL_VERSION + "|" +
                 PROTOCOL_NAME + "|" +
-                tempFile.getAbsolutePath() + "|" +
-                PROTOCOL_TYPE;
+                socketAddr.getHostName() + ":" + server.getPort() + "|" +
+                PROTOCOL_TYPE + "\n";
         System.out.print(connectString);
-
-        // Start gRPC server
-        server.start();
 
         // Listen to shutdown hook
         Runtime.getRuntime().addShutdownHook(new Thread() {
@@ -138,7 +146,19 @@ public final class Javasdk
             }
         });
 
+        // Wait until terminated
+        server.awaitTermination();
     }
+
+    private SslContextBuilder getSslContextBuilder() {
+        SslContextBuilder sslClientContextBuilder = SslContextBuilder.forServer(new File(certChainFilePath),
+                new File(privateKeyFilePath));
+        sslClientContextBuilder.trustManager(new File(trustCertCollectionFilePath));
+        sslClientContextBuilder.clientAuth(ClientAuth.REQUIRE);
+        return GrpcSslContexts.configure(sslClientContextBuilder,
+                SslProvider.OPENSSL);
+    }
+
 
     /**
      * getHash takes a string and transforms it into a 32bit hash
@@ -181,10 +201,12 @@ public final class Javasdk
         @Override
         public void executeJob(Job job, StreamObserver<JobResult> stream) {
             // Find job object in our job cache
-            int hashedTitle = Javasdk.getHash(job.getTitle());
             JobsWrapper jobWrap = null;
             for (JobsWrapper jobWrapper: cachedJobs) {
-                if (jobWrapper.getJob().getUniqueId() == hashedTitle) {
+                logger.info("Unique id:" + jobWrapper.getJob().getUniqueId());
+                logger.info("Wrapper Title:" + jobWrapper.getJob().getTitle());
+                if (jobWrapper.getJob().getUniqueId() == job.getUniqueId()) {
+                    logger.info("Found job!!");
                     jobWrap = jobWrapper;
                     break;
                 }
@@ -193,7 +215,6 @@ public final class Javasdk
             // We couldn't found the job in our cache return error
             if (jobWrap == null) {
                 stream.onError(new Exception("job not found in plugin"));
-                stream.onCompleted();
                 return;
             }
 
