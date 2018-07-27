@@ -64,8 +64,14 @@ public class Javasdk
     private static final int FNV_32_INIT = 0x811c9dc5;
     private static final int FNV_32_PRIME = 0x01000193;
 
+    /**
+     * The listen address where the server is listening to.
+     */
     private static final String LISTEN_ADDR = "localhost";
 
+    /**
+     * Helper variables to pass certificates path.
+     */
     private final String certChainFilePath;
     private final String privateKeyFilePath;
     private final String trustCertCollectionFilePath;
@@ -203,10 +209,7 @@ public class Javasdk
             // Find job object in our job cache
             JobsWrapper jobWrap = null;
             for (JobsWrapper jobWrapper: cachedJobs) {
-                logger.info("Unique id:" + jobWrapper.getJob().getUniqueId());
-                logger.info("Wrapper Title:" + jobWrapper.getJob().getTitle());
                 if (jobWrapper.getJob().getUniqueId() == job.getUniqueId()) {
-                    logger.info("Found job!!");
                     jobWrap = jobWrapper;
                     break;
                 }
@@ -214,6 +217,7 @@ public class Javasdk
 
             // We couldn't found the job in our cache return error
             if (jobWrap == null) {
+                logger.info("cannot find job " + job.getTitle() + " in pipeline");
                 stream.onError(new Exception("job not found in plugin"));
                 return;
             }

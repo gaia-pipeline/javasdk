@@ -14,6 +14,14 @@ public class JobsWrapper {
      */
     private Job job;
 
+    public JobsWrapper(Handler handler, Job job) {
+        this.handler = handler;
+        this.job = job;
+    }
+
+    public JobsWrapper() {
+    }
+
     public Handler getHandler() {
         return handler;
     }

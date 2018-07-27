@@ -29,6 +29,17 @@ public class PipelineJob {
      */
     private HashMap<String, String> args;
 
+    public PipelineJob(Handler handler, String title, String description, long priority, HashMap<String, String> args) {
+        this.handler = handler;
+        this.title = title;
+        this.description = description;
+        this.priority = priority;
+        this.args = args;
+    }
+
+    public PipelineJob() {
+    }
+
     public Handler getHandler() {
         return handler;
     }
