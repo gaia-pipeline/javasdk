@@ -96,7 +96,6 @@ public class Javasdk
             if (job.getInteraction() != null) {
                 maBuilder.setDescription(job.getInteraction().getDescription());
                 maBuilder.setType(job.getInteraction().getType().getType());
-                maBuilder.setValue(job.getInteraction().getValue());
             }
 
             // Arguments
@@ -107,7 +106,6 @@ public class Javasdk
                             .setDescription(arg.getDescription())
                             .setType(arg.getType().getType())
                             .setKey(arg.getKey())
-                            .setValue(arg.getValue())
                             .build();
 
                     args.add(protoArg);
@@ -177,7 +175,7 @@ public class Javasdk
                 .build().start();
 
         // Output the address and service name to stdout.
-        // hasicorp go-plugin will use that to establish connection.
+        // hashicorp go-plugin will use that to establish connection.
         String connectString = CORE_PROTOCOL_VERSION + "|" +
                 PROTOCOL_VERSION + "|" +
                 PROTOCOL_NAME + "|" +

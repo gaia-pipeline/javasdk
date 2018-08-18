@@ -5,22 +5,22 @@ public class PipelineArgument {
     /**
      * description is the description displayed in the UI.
      */
-    private String description;
+    private String description = "";
 
     /**
      * type is the argument type used in the UI.
      */
-    private InputType type;
+    private InputType type = InputType.TextFieldInp;
 
     /**
      * key is the key used to identify the argument.
      */
-    private String key;
+    private String key = "";
 
     /**
      * value contains the argument value from the user.
      */
-    private String value;
+    private String value = "";
 
     public PipelineArgument(String key, String value) {
         this.key = key;

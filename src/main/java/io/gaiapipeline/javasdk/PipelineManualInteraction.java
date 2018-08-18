@@ -5,17 +5,17 @@ public class PipelineManualInteraction {
     /**
      * description is the description displayed in the UI.
      */
-    private String description;
+    private String description = "";
 
     /**
      * type is the input type used in the UI.
      */
-    private InputType type;
+    private InputType type = InputType.TextFieldInp;
 
     /**
      * value is the value provided by the user.
      */
-    private String value;
+    private String value = "";
 
     public PipelineManualInteraction() {
     }
