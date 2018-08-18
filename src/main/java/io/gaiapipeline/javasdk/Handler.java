@@ -1,9 +1,9 @@
 package io.gaiapipeline.javasdk;
 
-import java.util.Map;
+import java.util.ArrayList;
 
 public interface Handler {
 
-    void executeHandler(Map<String, String> args) throws Exception;
+    void executeHandler(ArrayList<PipelineArgument> args) throws Exception;
 
 }

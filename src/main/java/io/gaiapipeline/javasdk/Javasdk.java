@@ -1,9 +1,6 @@
 package io.gaiapipeline.javasdk;
 
-import io.gaiapipeline.proto.Empty;
-import io.gaiapipeline.proto.Job;
-import io.gaiapipeline.proto.JobResult;
-import io.gaiapipeline.proto.PluginGrpc;
+import io.gaiapipeline.proto.*;
 import io.grpc.Server;
 import io.grpc.health.v1.HealthCheckResponse;
 import io.grpc.netty.GrpcSslContexts;
@@ -92,14 +89,59 @@ public class Javasdk
      */
     public void Serve(ArrayList<PipelineJob> jobs) throws Exception {
         // Surround all jobs with a wrapper for later processing
-        cachedJobs = new ArrayList<JobsWrapper>();
+        cachedJobs = new ArrayList<>();
         for (PipelineJob job: jobs) {
+            // Manual interaction
+            ManualInteraction.Builder maBuilder = ManualInteraction.newBuilder();
+            if (job.getInteraction() != null) {
+                maBuilder.setDescription(job.getInteraction().getDescription());
+                maBuilder.setType(job.getInteraction().getType().getType());
+                maBuilder.setValue(job.getInteraction().getValue());
+            }
+
+            // Arguments
+            ArrayList<Argument> args = new ArrayList<>();
+            if (job.getArgs() != null) {
+                for (PipelineArgument arg: job.getArgs()) {
+                    Argument protoArg = Argument.newBuilder()
+                            .setDescription(arg.getDescription())
+                            .setType(arg.getType().getType())
+                            .setKey(arg.getKey())
+                            .setValue(arg.getValue())
+                            .build();
+
+                    args.add(protoArg);
+                }
+            }
+
+            // Resolve dependencies
+            ArrayList<Integer> dependson = new ArrayList<>();
+            if (job.getDependsOn() != null) {
+                for (String depJob: job.getDependsOn()) {
+                    boolean foundDep = false;
+                    for (PipelineJob currJob: jobs) {
+                        if (depJob.equalsIgnoreCase(currJob.getTitle())) {
+                            dependson.add(getHash(currJob.getTitle()));
+                            foundDep = true;
+                            break;
+                        }
+                    }
+
+                    if (!foundDep) {
+                        throw new Exception("job '" + job.getTitle() + "' has dependency '" + depJob + "' which is not declared!");
+                    }
+                }
+            }
+
             // Create gRPC plugin object
             Job grpcJob = Job.newBuilder().
                     setUniqueId(getHash(job.getTitle()))
                     .setTitle(job.getTitle())
                     .setDescription(job.getDescription())
-                    .setPriority(job.getPriority()).build();
+                    .setInteraction(maBuilder.build())
+                    .addAllArgs(args)
+                    .addAllDependson(dependson)
+                    .build();
 
             // Create wrapper around gRPC plugin object
             JobsWrapper wrapper = new JobsWrapper();
@@ -222,10 +264,21 @@ public class Javasdk
                 return;
             }
 
+            // Transform arguments
+            ArrayList<PipelineArgument> args = new ArrayList<>();
+            for (Argument arg: job.getArgsList()) {
+                PipelineArgument pArg = new PipelineArgument(
+                        arg.getKey(),
+                        arg.getValue()
+                );
+
+                args.add(pArg);
+            }
+
             // Execute job
             JobResult.Builder resultBuilder = JobResult.newBuilder();
             try {
-                jobWrap.getHandler().executeHandler(job.getArgsMap());
+                jobWrap.getHandler().executeHandler(args);
             } catch (Exception ex) {
                 if (ex instanceof ExitPipelineException) {
                     resultBuilder.setExitPipeline(true);

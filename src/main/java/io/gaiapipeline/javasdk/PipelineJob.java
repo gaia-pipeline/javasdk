@@ -1,6 +1,6 @@
 package io.gaiapipeline.javasdk;
 
-import java.util.HashMap;
+import java.util.ArrayList;
 
 public class PipelineJob {
 
@@ -20,21 +20,42 @@ public class PipelineJob {
     private String description;
 
     /**
-     * priority is the priority of execution (order) of this job.
+     * dependsOn is a list of job titles. Dependent jobs will be
+     * executed before the job self.
      */
-    private long priority;
+    private ArrayList<String> dependsOn;
 
     /**
      * args are the arguments passed by gaia for this job.
      */
-    private HashMap<String, String> args;
+    private ArrayList<PipelineArgument> args;
 
-    public PipelineJob(Handler handler, String title, String description, long priority, HashMap<String, String> args) {
+    /**
+     * interaction is a manual interaction shown to the user right before job execution.
+     */
+    private PipelineManualInteraction interaction;
+
+    public PipelineJob(Handler handler, String title, String description) {
         this.handler = handler;
         this.title = title;
         this.description = description;
-        this.priority = priority;
+    }
+
+    public PipelineJob(Handler handler, String title, String description, ArrayList<String> dependsOn, ArrayList<PipelineArgument> args) {
+        this.handler = handler;
+        this.title = title;
+        this.description = description;
+        this.dependsOn = dependsOn;
         this.args = args;
+    }
+
+    public PipelineJob(Handler handler, String title, String description, ArrayList<String> dependsOn, ArrayList<PipelineArgument> args, PipelineManualInteraction interaction) {
+        this.handler = handler;
+        this.title = title;
+        this.description = description;
+        this.dependsOn = dependsOn;
+        this.args = args;
+        this.interaction = interaction;
     }
 
     public PipelineJob() {
@@ -64,19 +85,27 @@ public class PipelineJob {
         this.description = description;
     }
 
-    public long getPriority() {
-        return priority;
+    public ArrayList<String> getDependsOn() {
+        return dependsOn;
     }
 
-    public void setPriority(long priority) {
-        this.priority = priority;
+    public void setDependsOn(ArrayList<String> dependsOn) {
+        this.dependsOn = dependsOn;
     }
 
-    public HashMap<String, String> getArgs() {
+    public ArrayList<PipelineArgument> getArgs() {
         return args;
     }
 
-    public void setArgs(HashMap<String, String> args) {
+    public void setArgs(ArrayList<PipelineArgument> args) {
         this.args = args;
+    }
+
+    public PipelineManualInteraction getInteraction() {
+        return interaction;
+    }
+
+    public void setInteraction(PipelineManualInteraction interaction) {
+        this.interaction = interaction;
     }
 }
