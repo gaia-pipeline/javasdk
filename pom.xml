@@ -10,7 +10,7 @@
     <description>Java SDK for Gaia</description>
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <grpc.version>1.11.0</grpc.version>
+        <grpc.version>1.14.0</grpc.version>
         <os.plugin.version>1.6.0</os.plugin.version>
         <protobuf.plugin.version>3.6.0</protobuf.plugin.version>
         <protoc.version>3.6.0</protoc.version>
@@ -169,9 +169,8 @@
         </dependency>
         <dependency>
             <groupId>io.netty</groupId>
-            <artifactId>netty-tcnative</artifactId>
-            <version>2.0.12.FINAL</version>
-            <classifier>${os.detected.classifier}</classifier>
+            <artifactId>netty-tcnative-boringssl-static</artifactId>
+            <version>2.0.13.Final</version>
         </dependency>
     </dependencies>
 
